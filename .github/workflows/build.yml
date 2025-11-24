@@ -56,7 +56,7 @@ jobs:
       # Step 7: Run Docker Container (Expose Port 8000)
       - name: Run Docker Container
         run: |
-          docker run -d -p 8000:8001 --name myapp_container myapp:latest
+          docker run -d -p 8000:8000 --name myapp_container myapp:latest
           sleep 10
 
       # Step 8: OWASP ZAP Baseline Scan
