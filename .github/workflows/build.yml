@@ -69,15 +69,27 @@ jobs:
         run: |
           mkdir -p zap-output
           chmod 777 zap-output
-          docker run --rm --network zapnet \
+      
+          # Wait until the app is reachable
+          for i in {1..30}; do
+            if curl -s http://localhost:8000 >/dev/null; then
+              echo "App is ready"
+              break
+            fi
+            echo "Waiting for app..."
+            sleep 2
+          done
+      
+          docker run --rm \
             -v $(pwd)/zap-output:/zap/wrk \
             ghcr.io/zaproxy/zaproxy:stable \
             /zap/zap-baseline.py \
-            -t http://visva_container:8000 \
+            -t http://host.docker.internal:8000 \
             -r /zap/wrk/zap-report.html \
             -J /zap/wrk/zap-report.json \
             -x /zap/wrk/zap-report.xml \
             -w /zap/wrk/zap-warnings.md
+
 
       # Step 10: Upload ZAP Report
       - uses: actions/upload-artifact@v4
