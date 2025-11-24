@@ -48,6 +48,13 @@ jobs:
             -Dsonar.sources=src
             -Dsonar.python.coverage.reportPaths=coverage.xml
 
+      # Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       # Step 6: Build Docker Image
       - name: Build Docker Image
         run: |
