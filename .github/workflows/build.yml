@@ -9,14 +9,14 @@ on:
 
 jobs:
   sonarqube:
-    name: Unit Tests + SonarQube
+    name: Unit Tests + SonarQube + ZAP
     runs-on: ubuntu-latest
 
     steps:
       # Step 1: Checkout repository
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Required for SonarQube scan
+          fetch-depth: 0
 
       # Step 2: Setup Python
       - name: Setup Python
@@ -53,39 +53,41 @@ jobs:
         run: |
           docker build -t visva:latest .
 
-      # Step 7: Run Docker Container (Expose Port 8000)
+      # Step 7: Create custom Docker network
+      - name: Create Docker Network
+        run: |
+          docker network create zapnet || true
+
+      # Step 8: Run Docker Container on the network
       - name: Run Docker Container
         run: |
-          docker run -d -p 8000:8000 --name visva visva:latest
+          docker run -d --name visva_container --network zapnet -p 8000:8000 visva:latest
           sleep 15
 
-      # 8. OWASP ZAP Baseline Scan
+      # Step 9: OWASP ZAP Baseline Scan
       - name: OWASP ZAP Scan
         run: |
-          mkdir zap-output
+          mkdir -p zap-output
           chmod 777 zap-output
           docker run --rm --network zapnet \
             -v $(pwd)/zap-output:/zap/wrk \
             ghcr.io/zaproxy/zaproxy:stable \
             /zap/zap-baseline.py \
-            -t http://myapp-container:8001 \
-            --autooff \
-            -I \
-            -x zap-report.xml \
-            -r zap-report.html \
-            -J zap-report.json \
-            -w zap-warnings.md
+            -t http://visva_container:8000 \
+            -r /zap/wrk/zap-report.html \
+            -J /zap/wrk/zap-report.json \
+            -x /zap/wrk/zap-report.xml \
+            -w /zap/wrk/zap-warnings.md
 
-      # 9. Upload ZAP Report
+      # Step 10: Upload ZAP Report
       - uses: actions/upload-artifact@v4
         with:
           name: zap-report
           path: zap-output/*
 
-      # 10. Stop and Remove Container
-      - name: Stop Container
+      # Step 11: Stop and Remove Container & Network
+      - name: Cleanup
         run: |
-          docker stop myapp-container
-          docker rm myapp-container
-          docker network rm zapnet
-          docker rm myapp_container
+          docker stop visva_container || true
+          docker rm visva_container || true
+          docker network rm zapnet || true
