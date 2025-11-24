@@ -69,14 +69,14 @@ jobs:
           docker run -d --name visva --network zapnet -p 8000:8000 visva:latest
           echo "Waiting for app to become healthy..."
           for i in {1..30}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' visva || echo "none")
-            if [ "$STATUS" = "healthy" ]; then
+            if curl -s http://localhost:8000 >/dev/null; then
               echo "App is ready"
               break
             fi
             echo "Waiting for app..."
             sleep 2
           done
+
 
       # Step 9: OWASP ZAP Baseline Scan
       - name: OWASP ZAP Scan
