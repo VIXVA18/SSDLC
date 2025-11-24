@@ -58,21 +58,14 @@ jobs:
         run: |
           docker network create zapnet || true
 
-      # Step 8: Run Docker Container (App)
+      # step 8: Run Docker Container (Expose Port 8000 in a network)
       - name: Run Docker Container
         run: |
-          docker run -d --name visva_container --network zapnet -p 8000:8000 visva:latest
-          sleep 15
-
-      # Step 9: OWASP ZAP Baseline Scan
-      - name: OWASP ZAP Scan
-        run: |
-          mkdir -p zap-output
-          chmod 777 zap-output
-      
-          # Wait until the app is reachable
+          docker network create zapnet || true
+          docker run -d --name visva --network zapnet -p 8000:8000 visva:latest
+          # Wait for app to be ready
           for i in {1..30}; do
-            if curl -s http://localhost:8000 >/dev/null; then
+            if docker exec visva curl -s http://localhost:8000 >/dev/null; then
               echo "App is ready"
               break
             fi
@@ -80,15 +73,22 @@ jobs:
             sleep 2
           done
       
-          docker run --rm \
+      # step 9: OWASP ZAP Baseline Scan
+      - name: OWASP ZAP Scan
+        run: |
+          mkdir -p zap-output
+          chmod 777 zap-output
+      
+          docker run --rm --network zapnet \
             -v $(pwd)/zap-output:/zap/wrk \
             ghcr.io/zaproxy/zaproxy:stable \
             /zap/zap-baseline.py \
-            -t http://host.docker.internal:8000 \
+            -t http://visva:8000 \
             -r /zap/wrk/zap-report.html \
             -J /zap/wrk/zap-report.json \
             -x /zap/wrk/zap-report.xml \
             -w /zap/wrk/zap-warnings.md
+
 
 
       # Step 10: Upload ZAP Report
