@@ -39,6 +39,8 @@ jobs:
       # Step 5: SonarQube Scan
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.projectKey=VIXVA18_SSDLC
@@ -46,7 +48,7 @@ jobs:
             -Dsonar.sources=src
             -Dsonar.python.coverage.reportPaths=coverage.xml
 
-       # Step 6: Build Docker Image
+      # Step 6: Build Docker Image
       - name: Build Docker Image
         run: |
           docker build -t myapp:latest .
@@ -54,7 +56,7 @@ jobs:
       # Step 7: Run Docker Container (Expose Port 8000)
       - name: Run Docker Container
         run: |
-          docker run -d -p 8000:8001 --name visva myapp:latest
+          docker run -d -p 8000:8001 --name myapp_container myapp:latest
           sleep 10
 
       # Step 8: OWASP ZAP Baseline Scan
@@ -68,17 +70,15 @@ jobs:
             -t http://localhost:8000 \
             -r zap_report.html
 
-      # Step 10: Upload OWASP ZAP Report
+      # Step 9: Upload OWASP ZAP Report
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
         with:
           name: zap_report
           path: zap_report.html
 
-      # Step 11: Stop Container
+      # Step 10: Stop Container
       - name: Stop Container
         run: |
           docker stop myapp_container
           docker rm myapp_container
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
