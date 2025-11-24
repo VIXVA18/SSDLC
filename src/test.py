@@ -4,7 +4,7 @@ from io import StringIO
 import builtins
 
 # Import your module (adjust name if needed)
-import your_game_file_name as game
+import main.py as game
 
 
 class TestGuessingGame(unittest.TestCase):
