@@ -68,13 +68,14 @@ jobs:
           # Pull ZAP image
           docker pull zaproxy/zap-stable
       
-          # Run ZAP scan targeting the running app container
+          # Run ZAP scan targeting the app container on the default bridge network
           docker run --rm \
             -v $(pwd)/zap_work:/zap/wrk \
-            --link myapp_container:myapp \
+            --network bridge \
             zaproxy/zap-stable zap-baseline.py \
-            -t http://myapp:8001 \
+            -t http://host.docker.internal:8001 \
             -r /zap/wrk/zap_report.html
+
 
 
       # Step 9: Upload OWASP ZAP Report
