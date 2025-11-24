@@ -9,14 +9,14 @@ on:
 
 jobs:
   sonarqube:
-    name: Unit Tests + SonarQube + ZAP
+    name: Unit Tests + SonarQube
     runs-on: ubuntu-latest
 
     steps:
       # Step 1: Checkout repository
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # Required for SonarQube scan
 
       # Step 2: Setup Python
       - name: Setup Python
@@ -53,12 +53,12 @@ jobs:
         run: |
           docker build -t visva:latest .
 
-      # Step 7: Create custom Docker network
+      # Step 7: Create Docker Network
       - name: Create Docker Network
         run: |
           docker network create zapnet || true
 
-      # Step 8: Run Docker Container on the network
+      # Step 8: Run Docker Container (App)
       - name: Run Docker Container
         run: |
           docker run -d --name visva_container --network zapnet -p 8000:8000 visva:latest
@@ -85,8 +85,8 @@ jobs:
           name: zap-report
           path: zap-output/*
 
-      # Step 11: Stop and Remove Container & Network
-      - name: Cleanup
+      # Step 11: Stop and Remove Container and Network
+      - name: Cleanup Docker
         run: |
           docker stop visva_container || true
           docker rm visva_container || true
