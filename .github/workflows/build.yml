@@ -49,19 +49,18 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-
+      # Login to Docker Hub
       - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "visvakumar" --password-stdin
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-              
       # Step 6: Create Docker Network
       - name: Create Docker Network
-        run: docker network create zapnet
+        run: docker network create zapnet || true
 
       # Step 7: Build Docker Image
       - name: Build Docker Image
         run: |
-          docker build -t visvakumar/myapp:latest .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .
 
       # Step 8: Run Docker Container (Expose Port 8888)
       - name: Run Docker Container
@@ -69,8 +68,8 @@ jobs:
           docker run -d \
             --network zapnet \
             -p 8888:8001 \
-            --name visvakumar \
-            visvakumar/myapp:latest
+            --name myapp-container \
+            ${{ secrets.DOCKER_USERNAME }}/myapp:latest
           sleep 10
 
       # Step 9: OWASP ZAP baseline scan
@@ -84,7 +83,7 @@ jobs:
             -v $(pwd)/zap-output:/zap/wrk \
             ghcr.io/zaproxy/zaproxy:stable \
             /zap/zap-baseline.py \
-            -t http://visvakumar:8001 \
+            -t http://myapp-container:8001 \
             --autooff \
             -I \
             -x zap-report.xml \
@@ -101,8 +100,8 @@ jobs:
       # Step 11: Stop Container
       - name: Stop Container
         run: |
-          docker stop visvakumar || true
-          docker rm visvakumar || true
+          docker stop myapp-container || true
+          docker rm myapp-container || true
 
       # Step 12: Remove network
       - name: Remove Docker Network
