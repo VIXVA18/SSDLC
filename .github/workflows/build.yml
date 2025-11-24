@@ -28,7 +28,8 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install coverage fastapi uvicorn httpx
+          pip install -r requirements.txt
+          pip install coverage
 
       # Step 4: Run Unit Tests with Coverage
       - name: Run Unit Tests with Coverage
@@ -39,69 +40,70 @@ jobs:
       # Step 5: SonarQube Scan
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.projectKey=VIXVA18_SSDLC
             -Dsonar.organization=vixva18
             -Dsonar.sources=src
             -Dsonar.python.coverage.reportPaths=coverage.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Login to Docker Hub
+
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "adrenolad" --password-stdin
 
-      # Step 6: Build Docker Image
-      - name: Build Docker Image
-        run: docker build -t visva:latest .
-
-      # Step 7: Create Docker Network
+              
+      # Step 6: Create Docker Network
       - name: Create Docker Network
-        run: docker network create zapnet || true
+        run: docker network create zapnet
 
-      # Step 8: Run Docker Container with retries
+      # Step 7: Build Docker Image
+      - name: Build Docker Image
+        run: |
+          docker build -t adrenolad/myapp:latest .
+
+      # Step 8: Run Docker Container (Expose Port 8888)
       - name: Run Docker Container
         run: |
-          docker run -d --name visva --network zapnet -p 8000:8000 visva:latest
-          echo "Waiting for app to become healthy..."
-          for i in {1..30}; do
-            if curl -s http://localhost:8000 >/dev/null; then
-              echo "App is ready"
-              break
-            fi
-            echo "Waiting for app..."
-            sleep 2
-          done
+          docker run -d \
+            --network zapnet \
+            -p 8888:8001 \
+            --name adrenolad \
+            adrenolad/myapp:latest
+          sleep 10
 
-
-      # Step 9: OWASP ZAP Baseline Scan
-      - name: OWASP ZAP Scan
+      # Step 9: OWASP ZAP baseline scan
+      - name: Run OWASP ZAP Scan
         run: |
-          mkdir -p zap-output
+          mkdir zap-output
           chmod 777 zap-output
-          docker run --rm --network zapnet \
+          
+          docker run --rm \
+            --network zapnet \
             -v $(pwd)/zap-output:/zap/wrk \
             ghcr.io/zaproxy/zaproxy:stable \
             /zap/zap-baseline.py \
-            -t http://visva:8000 \
-            -r /zap/wrk/zap-report.html \
-            -J /zap/wrk/zap-report.json \
-            -x /zap/wrk/zap-report.xml \
-            -w /zap/wrk/zap-warnings.md
+            -t http://adrenolad:8001 \
+            --autooff \
+            -I \
+            -x zap-report.xml \
+            -r zap-report.html \
+            -J zap-report.json \
+            -w zap-warnings.md
 
-      # Step 10: Upload ZAP Report
+      # Step 10: Upload ZAP report
       - uses: actions/upload-artifact@v4
         with:
           name: zap-report
           path: zap-output/*
 
-      # Step 11: Stop and Remove Container and Network
-      - name: Cleanup Docker
+      # Step 11: Stop Container
+      - name: Stop Container
         run: |
-          docker stop visva || true
-          docker rm visva || true
-          docker network rm zapnet || true
+          docker stop adrenolad || true
+          docker rm adrenolad || true
+
+      # Step 12: Remove network
+      - name: Remove Docker Network
+        run: docker network rm zapnet || true
