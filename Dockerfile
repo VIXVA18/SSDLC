@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY src/ ./src
 
+# Ensure Python can import main.py from src/
+ENV PYTHONPATH="/app/src"
+
 # Set environment variable to avoid Python buffering output
 ENV PYTHONUNBUFFERED=1
 
-# Default command: run tests with coverage
-CMD ["bash", "-c", "PYTHONPATH=src coverage run -m unittest discover -s src -p 'test_*.py' && coverage report"]
+# Default: run coverage + all test files named test_*.py
+CMD ["bash", "-c", "coverage run -m unittest discover -s src -p 'test.py' && coverage report"]
